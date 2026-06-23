@@ -1,0 +1,166 @@
+// Vantage data model — hosted on Supabase Postgres.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Plan {
+  starter
+  growth
+  scale
+}
+
+enum BillingCycle {
+  monthly
+  annual
+}
+
+enum EntryKind {
+  gave // we gave / sold on credit -> customer owes us (debit)
+  got // payment received (credit)
+}
+
+enum PartnerStatus {
+  active
+  review
+  paused
+}
+
+enum EmployeeStatus {
+  paid
+  pending
+}
+
+enum ActivityType {
+  invoice
+  payment
+}
+
+model Company {
+  id             String       @id @default(uuid())
+  name           String
+  industry       String?
+  country        String?
+  currencyCode   String       @default("PKR")
+  currencySymbol String       @default("Rs")
+  teamSize       String?
+  seats          Int          @default(1)
+  plan           Plan         @default(starter)
+  billingCycle   BillingCycle @default(monthly)
+  billingSince   DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  users      User[]
+  customers  Customer[]
+  expenses   Expense[]
+  partners   Partner[]
+  employees  Employee[]
+  activities Activity[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId    String
+  name         String
+  role         String   @default("Owner")
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  @@index([companyId])
+}
+
+model Customer {
+  id           String        @id @default(uuid())
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId    String
+  name         String
+  business     String?
+  phone        String?
+  email        String?
+  initials     String
+  createdAt    DateTime      @default(now())
+  lastActivity DateTime      @default(now())
+  entries      LedgerEntry[]
+
+  @@index([companyId])
+}
+
+model LedgerEntry {
+  id         String    @id @default(uuid())
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  date       DateTime  @default(now())
+  memo       String
+  kind       EntryKind
+  amount     Decimal   @db.Decimal(14, 2)
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId])
+}
+
+model Expense {
+  id        String   @id @default(uuid())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  label     String
+  amount    Decimal  @db.Decimal(14, 2)
+  color     String   @default("#4F46E5")
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+}
+
+model Partner {
+  id        String        @id @default(uuid())
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  name      String
+  region    String        @default("Global")
+  contact   String?
+  phone     String?
+  email     String?
+  share     Int           @default(0)
+  revenue   Decimal        @db.Decimal(14, 2) @default(0)
+  delta     Float          @default(0)
+  status    PartnerStatus @default(active)
+  createdAt DateTime      @default(now())
+
+  @@index([companyId])
+}
+
+model Employee {
+  id        String         @id @default(uuid())
+  company   Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  name      String
+  role      String         @default("Team member")
+  dept      String         @default("General")
+  initials  String
+  salary    Decimal        @db.Decimal(14, 2)
+  status    EmployeeStatus @default(pending)
+  createdAt DateTime       @default(now())
+
+  @@index([companyId])
+}
+
+model Activity {
+  id        String       @id @default(uuid())
+  company   Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  who       String
+  what      String
+  amount    Decimal      @db.Decimal(14, 2)
+  type      ActivityType
+  createdAt DateTime     @default(now())
+
+  @@index([companyId])
+}
