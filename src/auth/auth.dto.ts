@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -17,6 +18,8 @@ export class RegisterDto {
   @IsOptional() @IsString() country?: string;
   @IsOptional() @IsString() currencyCode?: string;
   @IsOptional() @IsString() currencySymbol?: string;
+  @IsOptional() @IsNumber() @Min(0) capital?: number;
+  @IsOptional() @IsNumber() @Min(0) revenue?: number;
   @IsOptional() @IsString() teamSize?: string;
   @IsOptional() @IsInt() @Min(1) @Max(500) seats?: number;
   @IsOptional() @IsEnum(Plan) plan?: Plan;

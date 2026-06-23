@@ -50,6 +50,8 @@ model Company {
   country        String?
   currencyCode   String       @default("PKR")
   currencySymbol String       @default("Rs")
+  capital        Decimal      @db.Decimal(16, 2) @default(0)
+  revenue        Decimal      @db.Decimal(16, 2) @default(0)
   teamSize       String?
   seats          Int          @default(1)
   plan           Plan         @default(starter)
@@ -114,6 +116,7 @@ model Expense {
   companyId String
   label     String
   amount    Decimal  @db.Decimal(14, 2)
+  note      String?
   color     String   @default("#4F46E5")
   date      DateTime @default(now())
   createdAt DateTime @default(now())
