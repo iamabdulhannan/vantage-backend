@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Customer, LedgerEntry } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCustomerDto, AddEntryDto, UpdateEntryDto } from './customers.dto';
+import { CreateCustomerDto, AddEntryDto, UpdateEntryDto, UpdateCustomerDto } from './customers.dto';
 
 function initialsFrom(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -93,6 +93,29 @@ export class CustomersService {
       include: { entries: true },
     });
     return this.serialize(customer);
+  }
+
+  async update(companyId: string, id: string, dto: UpdateCustomerDto) {
+    const customer = await this.prisma.customer.findFirst({ where: { id, companyId } });
+    if (!customer) throw new NotFoundException('Customer not found');
+    const data: Record<string, unknown> = {};
+    if (dto.name !== undefined) {
+      data.name = dto.name.trim();
+      data.initials = initialsFrom(dto.name);
+    }
+    if (dto.business !== undefined) data.business = dto.business.trim();
+    if (dto.phone !== undefined) data.phone = dto.phone.trim();
+    if (dto.email !== undefined) data.email = dto.email.trim();
+    await this.prisma.customer.update({ where: { id }, data });
+    return this.get(companyId, id);
+  }
+
+  async remove(companyId: string, id: string) {
+    const customer = await this.prisma.customer.findFirst({ where: { id, companyId } });
+    if (!customer) throw new NotFoundException('Customer not found');
+    // Entries cascade-delete with the customer (onDelete: Cascade).
+    await this.prisma.customer.delete({ where: { id } });
+    return { ok: true };
   }
 
   async addEntry(companyId: string, id: string, dto: AddEntryDto) {

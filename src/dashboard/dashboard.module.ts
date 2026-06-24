@@ -22,19 +22,25 @@ export class DashboardService {
     ]);
 
     const openingRevenue = Number(company?.revenue ?? 0);
-    const capital = Number(company?.capital ?? 0);
+    const openingCapital = Number(company?.capital ?? 0);
     const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
     const receipts = entries.filter((e) => e.kind === 'got').reduce((s, e) => s + Number(e.amount), 0);
     const partnerRevenue = partners.reduce((s, p) => s + Number(p.revenue), 0);
     // Total revenue = the figure set at setup + payments collected through the khata book.
     const revenue = openingRevenue + receipts;
-    const profit = revenue - totalExpenses;
 
     const gross = employees.reduce((s, e) => s + Number(e.salary), 0);
     const tax = Math.round(gross * TAX_RATE);
     const pendingPayroll = employees.filter((e) => e.status === 'pending').reduce((s, e) => s + Number(e.salary), 0);
+    const paidPayroll = employees.filter((e) => e.status === 'paid').reduce((s, e) => s + Number(e.salary), 0);
 
-    const monthlyBurn = Math.round(totalExpenses / 12);
+    // Working capital is a *live cash position*, not a frozen figure: it starts at the capital
+    // entered at setup, grows with payments collected, and shrinks with expenses + salaries paid.
+    const capital = openingCapital + receipts - totalExpenses - paidPayroll;
+    const profit = revenue - totalExpenses - paidPayroll;
+
+    // Forward monthly cash burn ≈ recurring salaries + averaged operating expenses.
+    const monthlyBurn = Math.round(gross + totalExpenses / 12);
     const runwayMonths = monthlyBurn > 0 && capital > 0 ? +(capital / monthlyBurn).toFixed(1) : null;
 
     // ---- Real monthly series (last 12 months) from dated records ----------

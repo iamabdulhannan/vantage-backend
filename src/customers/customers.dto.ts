@@ -16,6 +16,13 @@ export class CreateCustomerDto {
   @IsOptional() @IsIn(['get', 'give']) openingKind?: 'get' | 'give';
 }
 
+export class UpdateCustomerDto {
+  @IsOptional() @EmptyToUndefined() @IsString() @MinLength(2) name?: string;
+  @IsOptional() @EmptyToUndefined() @IsString() business?: string;
+  @IsOptional() @EmptyToUndefined() @IsString() phone?: string;
+  @IsOptional() @EmptyToUndefined() @IsEmail() email?: string;
+}
+
 export class AddEntryDto {
   @IsEnum(EntryKind) kind!: EntryKind; // gave | got
   @IsNumber() @IsPositive() amount!: number;

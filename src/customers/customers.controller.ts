@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
-import { CreateCustomerDto, AddEntryDto, UpdateEntryDto } from './customers.dto';
+import { CreateCustomerDto, AddEntryDto, UpdateEntryDto, UpdateCustomerDto } from './customers.dto';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Principal } from '../common/principal';
@@ -26,6 +26,16 @@ export class CustomersController {
   @Get(':id')
   get(@CurrentUser() u: Principal, @Param('id') id: string) {
     return this.customers.get(u.companyId, id);
+  }
+
+  @Patch(':id')
+  update(@CurrentUser() u: Principal, @Param('id') id: string, @Body() dto: UpdateCustomerDto) {
+    return this.customers.update(u.companyId, id, dto);
+  }
+
+  @Delete(':id')
+  remove(@CurrentUser() u: Principal, @Param('id') id: string) {
+    return this.customers.remove(u.companyId, id);
   }
 
   @Post(':id/entries')
