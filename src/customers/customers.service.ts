@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Customer, LedgerEntry } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCustomerDto, AddEntryDto } from './customers.dto';
+import { CreateCustomerDto, AddEntryDto, UpdateEntryDto } from './customers.dto';
 
 function initialsFrom(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -122,5 +122,33 @@ export class CustomersService {
     ]);
 
     return this.get(companyId, id);
+  }
+
+  private async ensureEntry(companyId: string, customerId: string, entryId: string) {
+    const entry = await this.prisma.ledgerEntry.findFirst({
+      where: { id: entryId, customerId, customer: { companyId } },
+    });
+    if (!entry) throw new NotFoundException('Entry not found');
+    return entry;
+  }
+
+  async updateEntry(companyId: string, customerId: string, entryId: string, dto: UpdateEntryDto) {
+    await this.ensureEntry(companyId, customerId, entryId);
+    await this.prisma.ledgerEntry.update({
+      where: { id: entryId },
+      data: {
+        ...(dto.kind !== undefined ? { kind: dto.kind } : {}),
+        ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
+        ...(dto.memo !== undefined ? { memo: dto.memo.trim() } : {}),
+      },
+    });
+    await this.prisma.customer.update({ where: { id: customerId }, data: { lastActivity: new Date() } });
+    return this.get(companyId, customerId);
+  }
+
+  async removeEntry(companyId: string, customerId: string, entryId: string) {
+    await this.ensureEntry(companyId, customerId, entryId);
+    await this.prisma.ledgerEntry.delete({ where: { id: entryId } });
+    return this.get(companyId, customerId);
   }
 }

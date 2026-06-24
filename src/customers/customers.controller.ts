@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
-import { CreateCustomerDto, AddEntryDto } from './customers.dto';
+import { CreateCustomerDto, AddEntryDto, UpdateEntryDto } from './customers.dto';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Principal } from '../common/principal';
@@ -31,5 +31,20 @@ export class CustomersController {
   @Post(':id/entries')
   addEntry(@CurrentUser() u: Principal, @Param('id') id: string, @Body() dto: AddEntryDto) {
     return this.customers.addEntry(u.companyId, id, dto);
+  }
+
+  @Patch(':id/entries/:entryId')
+  updateEntry(
+    @CurrentUser() u: Principal,
+    @Param('id') id: string,
+    @Param('entryId') entryId: string,
+    @Body() dto: UpdateEntryDto,
+  ) {
+    return this.customers.updateEntry(u.companyId, id, entryId, dto);
+  }
+
+  @Delete(':id/entries/:entryId')
+  removeEntry(@CurrentUser() u: Principal, @Param('id') id: string, @Param('entryId') entryId: string) {
+    return this.customers.removeEntry(u.companyId, id, entryId);
   }
 }

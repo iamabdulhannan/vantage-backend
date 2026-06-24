@@ -15,3 +15,9 @@ export class AddEntryDto {
   @IsNumber() @IsPositive() amount!: number;
   @IsOptional() @IsString() memo?: string;
 }
+
+export class UpdateEntryDto {
+  @IsOptional() @IsEnum(EntryKind) kind?: EntryKind;
+  @IsOptional() @IsNumber() @IsPositive() amount?: number;
+  @IsOptional() @IsString() memo?: string;
+}
