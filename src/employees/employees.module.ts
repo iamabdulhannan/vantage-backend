@@ -37,6 +37,14 @@ export class IncrementDto {
   @IsNumber() @IsPositive() amount!: number;
 }
 
+export class UpdateEmployeeDto {
+  @IsOptional() @IsString() @MinLength(2) name?: string;
+  @IsOptional() @IsString() role?: string;
+  @IsOptional() @IsString() dept?: string;
+  // Full salary set (not a delta) — allows corrections downward too.
+  @IsOptional() @IsNumber() @IsPositive() salary?: number;
+}
+
 @Injectable()
 export class EmployeesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -99,6 +107,23 @@ export class EmployeesService {
     return e;
   }
 
+  async update(companyId: string, id: string, dto: UpdateEmployeeDto) {
+    const e = await this.ensure(companyId, id);
+    const salaryChanged = dto.salary !== undefined && dto.salary !== Number(e.salary);
+    const updated = await this.prisma.employee.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim(), initials: initialsFrom(dto.name) } : {}),
+        ...(dto.role !== undefined ? { role: dto.role.trim() || 'Team member' } : {}),
+        ...(dto.dept !== undefined ? { dept: dto.dept.trim() || 'General' } : {}),
+        ...(dto.salary !== undefined ? { salary: dto.salary } : {}),
+        // A changed salary means a fresh amount is owed → back to pending.
+        ...(salaryChanged ? { status: 'pending' as const } : {}),
+      },
+    });
+    return { ...updated, salary: Number(updated.salary) };
+  }
+
   async increment(companyId: string, id: string, dto: IncrementDto) {
     const e = await this.ensure(companyId, id);
     const updated = await this.prisma.employee.update({
@@ -149,6 +174,11 @@ export class EmployeesController {
   @Post('payroll/run')
   runPayroll(@CurrentUser() u: Principal) {
     return this.employees.runPayroll(u.companyId);
+  }
+
+  @Patch(':id')
+  update(@CurrentUser() u: Principal, @Param('id') id: string, @Body() dto: UpdateEmployeeDto) {
+    return this.employees.update(u.companyId, id, dto);
   }
 
   @Patch(':id/increment')

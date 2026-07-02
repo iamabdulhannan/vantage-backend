@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
   Injectable,
@@ -22,6 +23,12 @@ const EXPENSE_COLORS = ['#4F46E5', '#6366F1', '#818CF8', '#06B6D4', '#22D3EE', '
 export class CreateExpenseDto {
   @IsString() @MinLength(2) label!: string;
   @IsNumber() @IsPositive() value!: number;
+  @IsOptional() @IsString() note?: string;
+}
+
+export class UpdateExpenseDto {
+  @IsOptional() @IsString() @MinLength(2) label?: string;
+  @IsOptional() @IsNumber() @IsPositive() value?: number;
   @IsOptional() @IsString() note?: string;
 }
 
@@ -69,6 +76,20 @@ export class ExpensesService {
     };
   }
 
+  async update(companyId: string, id: string, dto: UpdateExpenseDto) {
+    const existing = await this.prisma.expense.findFirst({ where: { id, companyId } });
+    if (!existing) throw new NotFoundException('Expense not found');
+    const e = await this.prisma.expense.update({
+      where: { id },
+      data: {
+        ...(dto.label !== undefined ? { label: dto.label.trim() } : {}),
+        ...(dto.value !== undefined ? { amount: dto.value } : {}),
+        ...(dto.note !== undefined ? { note: dto.note.trim() || null } : {}),
+      },
+    });
+    return { id: e.id, label: e.label, value: Number(e.amount), note: e.note ?? undefined, color: e.color, date: e.date };
+  }
+
   async remove(companyId: string, id: string) {
     const e = await this.prisma.expense.findFirst({ where: { id, companyId } });
     if (!e) throw new NotFoundException('Expense not found');
@@ -92,6 +113,11 @@ export class ExpensesController {
   @Post()
   create(@CurrentUser() u: Principal, @Body() dto: CreateExpenseDto) {
     return this.expenses.create(u.companyId, dto);
+  }
+
+  @Patch(':id')
+  update(@CurrentUser() u: Principal, @Param('id') id: string, @Body() dto: UpdateExpenseDto) {
+    return this.expenses.update(u.companyId, id, dto);
   }
 
   @Delete(':id')
