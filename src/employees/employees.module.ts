@@ -17,8 +17,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Principal } from '../common/principal';
+import { taxRuleFor, TaxRule } from '../common/salary-tax';
 
-export const TAX_RATE = 0.12;
 
 function initialsFrom(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -49,10 +49,11 @@ export class UpdateEmployeeDto {
 export class EmployeesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private summary(rows: { salary: any; status: string }[]) {
+  private summary(rows: { salary: any; status: string }[], rule: TaxRule) {
     const list = rows.map((e) => ({ salary: Number(e.salary), status: e.status }));
     const gross = list.reduce((s, e) => s + e.salary, 0);
-    const tax = Math.round(gross * TAX_RATE);
+    // Progressive slabs are per-person: each salary is taxed on its own bracket.
+    const tax = list.reduce((s, e) => s + rule.monthlyTax(e.salary), 0);
     const net = gross - tax;
     const paid = list.filter((e) => e.status === 'paid');
     const pending = list.filter((e) => e.status === 'pending');
@@ -62,7 +63,9 @@ export class EmployeesService {
       gross,
       tax,
       net,
-      taxRate: TAX_RATE,
+      // Effective rate + rule name for display — the real math is per-slab.
+      taxRate: gross ? +(tax / gross).toFixed(4) : 0,
+      taxRule: rule.name,
       headcount: list.length,
       paidCount: paid.length,
       pendingCount: pending.length,
@@ -73,7 +76,11 @@ export class EmployeesService {
   }
 
   async list(companyId: string) {
-    const rows = await this.prisma.employee.findMany({ where: { companyId }, orderBy: { createdAt: 'asc' } });
+    const [rows, company] = await Promise.all([
+      this.prisma.employee.findMany({ where: { companyId }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.company.findUnique({ where: { id: companyId } }),
+    ]);
+    const rule = taxRuleFor(company?.country, company?.currencyCode);
     const employees = rows.map((e) => ({
       id: e.id,
       name: e.name,
@@ -81,9 +88,11 @@ export class EmployeesService {
       dept: e.dept,
       initials: e.initials,
       salary: Number(e.salary),
+      // Per-employee monthly withholding under the company's tax rule.
+      monthlyTax: rule.monthlyTax(Number(e.salary)),
       status: e.status,
     }));
-    return { employees, payroll: this.summary(rows) };
+    return { employees, payroll: this.summary(rows, rule) };
   }
 
   async create(companyId: string, dto: CreateEmployeeDto) {

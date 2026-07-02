@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Principal } from '../common/principal';
-import { TAX_RATE } from '../employees/employees.module';
+import { taxRuleFor } from '../common/salary-tax';
 
 @Injectable()
 export class DashboardService {
@@ -30,7 +30,8 @@ export class DashboardService {
     const revenue = openingRevenue + receipts;
 
     const gross = employees.reduce((s, e) => s + Number(e.salary), 0);
-    const tax = Math.round(gross * TAX_RATE);
+    const taxRule = taxRuleFor(company?.country, company?.currencyCode);
+    const tax = employees.reduce((s, e) => s + taxRule.monthlyTax(Number(e.salary)), 0);
     const pendingPayroll = employees.filter((e) => e.status === 'pending').reduce((s, e) => s + Number(e.salary), 0);
     const paidPayroll = employees.filter((e) => e.status === 'paid').reduce((s, e) => s + Number(e.salary), 0);
 
