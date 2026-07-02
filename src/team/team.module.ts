@@ -15,7 +15,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { PASSWORD_RULE, PASSWORD_MESSAGE } from '../auth/auth.dto';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
@@ -33,7 +34,8 @@ const Lower = () => Transform(({ value }) => (typeof value === 'string' ? value.
 export class AddMemberDto {
   @IsString() @MinLength(2) name!: string;
   @Lower() @IsEmail() email!: string;
-  @IsString() @MinLength(6) password!: string;
+  @IsString() @MinLength(8, { message: PASSWORD_MESSAGE }) @Matches(PASSWORD_RULE, { message: PASSWORD_MESSAGE })
+  password!: string;
   @IsOptional() @IsString() role?: string;
 }
 

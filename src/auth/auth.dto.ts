@@ -6,10 +6,15 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Max,
   Min,
   MinLength,
 } from 'class-validator';
+
+// Product-wide password policy — keep in sync with the app (src/utils/password.ts).
+export const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).+$/;
+export const PASSWORD_MESSAGE = 'Password must be at least 8 characters and include a letter and a number';
 
 export class RegisterDto {
   // Company
@@ -29,7 +34,8 @@ export class RegisterDto {
   @IsString() @MinLength(2) ownerName!: string;
   @IsOptional() @IsString() ownerRole?: string;
   @IsEmail() email!: string;
-  @IsString() @MinLength(6) password!: string;
+  @IsString() @MinLength(8, { message: PASSWORD_MESSAGE }) @Matches(PASSWORD_RULE, { message: PASSWORD_MESSAGE })
+  password!: string;
 }
 
 export class LoginDto {
