@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Customer, LedgerEntry } from '@prisma/client';
+import { Customer, LedgerEntry, Reminder } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCustomerDto, AddEntryDto, UpdateEntryDto, UpdateCustomerDto } from './customers.dto';
+import { CreateCustomerDto, AddEntryDto, UpdateEntryDto, UpdateCustomerDto, AddReminderDto, UpdateReminderDto } from './customers.dto';
 
 function initialsFrom(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -9,7 +9,35 @@ function initialsFrom(name: string): string {
   return name.trim().slice(0, 2).toUpperCase() || '?';
 }
 
-type WithEntries = Customer & { entries: LedgerEntry[] };
+type WithEntries = Customer & { entries: LedgerEntry[]; reminders?: Reminder[] };
+
+/**
+ * Reliability from promise history: kept vs missed vs rescheduled.
+ * A pending reminder more than a day overdue counts as missed-so-far.
+ */
+function reliabilityOf(reminders: Reminder[]) {
+  const now = Date.now();
+  let kept = 0,
+    missed = 0,
+    rescheduled = 0,
+    overdue = 0;
+  for (const r of reminders) {
+    if (r.status === 'kept') kept++;
+    else if (r.status === 'missed') missed++;
+    else if (r.status === 'rescheduled') rescheduled++;
+    else if (r.status === 'pending' && now - new Date(r.dueAt).getTime() > 24 * 3600 * 1000) overdue++;
+  }
+  const bad = missed + overdue;
+  const total = kept + bad + rescheduled;
+  let label = 'New';
+  if (total > 0) {
+    if (rescheduled >= 3) label = 'Reschedules often';
+    else if (bad === 0 && rescheduled <= 1 && kept > 0) label = 'Reliable';
+    else if (kept / total >= 0.6) label = 'Usually pays';
+    else label = 'Risky';
+  }
+  return { label, kept, missed: bad, rescheduled };
+}
 
 @Injectable()
 export class CustomersService {
@@ -35,6 +63,9 @@ export class CustomersService {
         };
       });
     const balance = gave - got;
+    const reminders = [...(c.reminders ?? [])].sort(
+      (a, b) => new Date(b.dueAt).getTime() - new Date(a.dueAt).getTime(),
+    );
     return {
       id: c.id,
       name: c.name,
@@ -48,13 +79,21 @@ export class CustomersService {
       balance,
       status: balance === 0 ? 'settled' : balance > 0 ? 'current' : 'advance',
       entries,
+      reminders: reminders.map((r) => ({
+        id: r.id,
+        dueAt: r.dueAt,
+        note: r.note ?? undefined,
+        status: r.status,
+        createdAt: r.createdAt,
+      })),
+      reliability: reliabilityOf(c.reminders ?? []),
     };
   }
 
   async list(companyId: string) {
     const customers = await this.prisma.customer.findMany({
       where: { companyId },
-      include: { entries: true },
+      include: { entries: true, reminders: true },
       orderBy: { createdAt: 'desc' },
     });
     const serialized = customers.map((c) => this.serialize(c));
@@ -64,7 +103,7 @@ export class CustomersService {
   }
 
   async get(companyId: string, id: string) {
-    const customer = await this.prisma.customer.findFirst({ where: { id, companyId }, include: { entries: true } });
+    const customer = await this.prisma.customer.findFirst({ where: { id, companyId }, include: { entries: true, reminders: true } });
     if (!customer) throw new NotFoundException('Customer not found');
     return this.serialize(customer);
   }
@@ -90,7 +129,7 @@ export class CustomersService {
             }
           : undefined,
       },
-      include: { entries: true },
+      include: { entries: true, reminders: true },
     });
     return this.serialize(customer);
   }
@@ -123,6 +162,14 @@ export class CustomersService {
     if (!customer) throw new NotFoundException('Customer not found');
 
     const gave = dto.kind === 'gave';
+    // A payment received fulfils the customer's oldest open promise.
+    if (!gave) {
+      const open = await this.prisma.reminder.findFirst({
+        where: { customerId: id, status: 'pending' },
+        orderBy: { dueAt: 'asc' },
+      });
+      if (open) await this.prisma.reminder.update({ where: { id: open.id }, data: { status: 'kept' } });
+    }
     await this.prisma.$transaction([
       this.prisma.ledgerEntry.create({
         data: {
@@ -172,6 +219,29 @@ export class CustomersService {
   async removeEntry(companyId: string, customerId: string, entryId: string) {
     await this.ensureEntry(companyId, customerId, entryId);
     await this.prisma.ledgerEntry.delete({ where: { id: entryId } });
+    return this.get(companyId, customerId);
+  }
+
+  async addReminder(companyId: string, customerId: string, dto: AddReminderDto) {
+    const customer = await this.prisma.customer.findFirst({ where: { id: customerId, companyId } });
+    if (!customer) throw new NotFoundException('Customer not found');
+    // Setting a new date while one is open = the customer rescheduled.
+    await this.prisma.reminder.updateMany({
+      where: { customerId, status: 'pending' },
+      data: { status: 'rescheduled' },
+    });
+    await this.prisma.reminder.create({
+      data: { customerId, dueAt: new Date(dto.dueAt), note: dto.note?.trim() || null },
+    });
+    return this.get(companyId, customerId);
+  }
+
+  async updateReminder(companyId: string, customerId: string, reminderId: string, dto: UpdateReminderDto) {
+    const reminder = await this.prisma.reminder.findFirst({
+      where: { id: reminderId, customerId, customer: { companyId } },
+    });
+    if (!reminder) throw new NotFoundException('Reminder not found');
+    await this.prisma.reminder.update({ where: { id: reminderId }, data: { status: dto.status } });
     return this.get(companyId, customerId);
   }
 }

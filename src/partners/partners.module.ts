@@ -8,7 +8,7 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Principal } from '../common/principal';
 
-// Blank optional form fields arrive as '' — treat them as "not provided".
+// Blank optional form fields arrive as '' - treat them as "not provided".
 const EmptyToUndefined = () =>
   Transform(({ value }) => (typeof value === 'string' && value.trim() === '' ? undefined : value));
 

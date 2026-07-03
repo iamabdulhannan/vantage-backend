@@ -22,7 +22,7 @@ async function bootstrap() {
 
   const swagger = new DocumentBuilder()
     .setTitle('Vantage API')
-    .setDescription('B2B finance & ledger backend — auth, customers, expenses, partners, payroll, billing.')
+    .setDescription('B2B finance & ledger backend - auth, customers, expenses, partners, payroll, billing.')
     .setVersion('1.0.0')
     .addBearerAuth()
     .build();

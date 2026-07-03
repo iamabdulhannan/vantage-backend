@@ -34,7 +34,7 @@ async function bootstrap(): Promise<Express> {
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swagger));
 
-  // init() — not listen() — so it works inside a serverless invocation.
+  // init() - not listen() - so it works inside a serverless invocation.
   await app.init();
   return expressApp;
 }

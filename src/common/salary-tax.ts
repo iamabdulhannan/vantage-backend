@@ -1,11 +1,11 @@
 /**
- * Salary withholding tax engine — progressive government slabs, not a flat rate.
+ * Salary withholding tax engine - progressive government slabs, not a flat rate.
  *
  * Pakistan: FBR salaried-individual slabs, FY 2025-26 (effective 1 July 2025),
  * applied to ANNUAL taxable income; the monthly withholding is 1/12 of the
  * annual liability (how employers actually deduct under Section 149).
  *
- * Other countries default to 0% until their tables are added — showing no tax
+ * Other countries default to 0% until their tables are added - showing no tax
  * is more honest than inventing a rate.
  */
 

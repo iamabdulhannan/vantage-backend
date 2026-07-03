@@ -85,7 +85,7 @@ export class DashboardService {
       revenue: { delta: pctChange(last.revenue, prev.revenue), spark: revSpark },
       expenses: { delta: pctChange(last.expense, prev.expense), spark: expSpark },
       profit: { delta: pctChange(last.revenue - last.expense, prev.revenue - prev.expense), spark: profitSpark },
-      // Capital is a stored balance, not a dated flow — no real month-over-month trend.
+      // Capital is a stored balance, not a dated flow - no real month-over-month trend.
       capital: { delta: null as number | null, spark: [] as number[] },
     };
 

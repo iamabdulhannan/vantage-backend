@@ -12,7 +12,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-// Product-wide password policy — keep in sync with the app (src/utils/password.ts).
+// Product-wide password policy - keep in sync with the app (src/utils/password.ts).
 export const PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 export const PASSWORD_MESSAGE = 'Password must be at least 8 characters and include a letter and a number';
 

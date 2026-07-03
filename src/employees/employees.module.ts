@@ -41,7 +41,7 @@ export class UpdateEmployeeDto {
   @IsOptional() @IsString() @MinLength(2) name?: string;
   @IsOptional() @IsString() role?: string;
   @IsOptional() @IsString() dept?: string;
-  // Full salary set (not a delta) — allows corrections downward too.
+  // Full salary set (not a delta) - allows corrections downward too.
   @IsOptional() @IsNumber() @IsPositive() salary?: number;
 }
 
@@ -63,7 +63,7 @@ export class EmployeesService {
       gross,
       tax,
       net,
-      // Effective rate + rule name for display — the real math is per-slab.
+      // Effective rate + rule name for display - the real math is per-slab.
       taxRate: gross ? +(tax / gross).toFixed(4) : 0,
       taxRule: rule.name,
       headcount: list.length,

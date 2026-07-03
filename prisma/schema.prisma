@@ -93,8 +93,30 @@ model Customer {
   createdAt    DateTime      @default(now())
   lastActivity DateTime      @default(now())
   entries      LedgerEntry[]
+  reminders    Reminder[]
 
   @@index([companyId])
+}
+
+enum ReminderStatus {
+  pending
+  kept
+  missed
+  rescheduled
+}
+
+// A collection promise: "this customer will pay on <dueAt>". History of these
+// powers the customer's reliability status (honest vs rescheduling repeatedly).
+model Reminder {
+  id         String         @id @default(uuid())
+  customer   Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  dueAt      DateTime
+  note       String?
+  status     ReminderStatus @default(pending)
+  createdAt  DateTime       @default(now())
+
+  @@index([customerId])
 }
 
 model LedgerEntry {

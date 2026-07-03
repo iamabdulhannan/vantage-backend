@@ -9,7 +9,7 @@ export interface PlanDef {
   features: string[];
 }
 
-// No free tier — the cheapest seat is $10/mo.
+// No free tier - the cheapest seat is $10/mo.
 export const PLANS: PlanDef[] = [
   {
     key: 'starter',
@@ -38,7 +38,7 @@ export const PLANS: PlanDef[] = [
 ];
 
 export const ANNUAL_DISCOUNT = 0.2; // 20% off when billed yearly
-export const BILLING_MIN = 10; // USD floor — never bill less than this
+export const BILLING_MIN = 10; // USD floor - never bill less than this
 
 export interface BillingBreakdown {
   planKey: Plan;

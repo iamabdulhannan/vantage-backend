@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CustomersService } from './customers.service';
-import { CreateCustomerDto, AddEntryDto, UpdateEntryDto, UpdateCustomerDto } from './customers.dto';
+import { CreateCustomerDto, AddEntryDto, UpdateEntryDto, UpdateCustomerDto, AddReminderDto, UpdateReminderDto } from './customers.dto';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Principal } from '../common/principal';
@@ -56,5 +56,20 @@ export class CustomersController {
   @Delete(':id/entries/:entryId')
   removeEntry(@CurrentUser() u: Principal, @Param('id') id: string, @Param('entryId') entryId: string) {
     return this.customers.removeEntry(u.companyId, id, entryId);
+  }
+
+  @Post(':id/reminders')
+  addReminder(@CurrentUser() u: Principal, @Param('id') id: string, @Body() dto: AddReminderDto) {
+    return this.customers.addReminder(u.companyId, id, dto);
+  }
+
+  @Patch(':id/reminders/:reminderId')
+  updateReminder(
+    @CurrentUser() u: Principal,
+    @Param('id') id: string,
+    @Param('reminderId') reminderId: string,
+    @Body() dto: UpdateReminderDto,
+  ) {
+    return this.customers.updateReminder(u.companyId, id, reminderId, dto);
   }
 }

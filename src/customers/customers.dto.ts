@@ -1,6 +1,6 @@
-import { EntryKind } from '@prisma/client';
+import { EntryKind, ReminderStatus } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsEnum, IsIn, IsNumber, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsIn, IsNumber, IsOptional, IsPositive, IsString, MinLength } from 'class-validator';
 
 // Treat empty / whitespace-only strings coming from optional form fields as "not provided",
 // so a blank email/phone doesn't fail validation and silently drop the whole request.
@@ -33,4 +33,13 @@ export class UpdateEntryDto {
   @IsOptional() @IsEnum(EntryKind) kind?: EntryKind;
   @IsOptional() @IsNumber() @IsPositive() amount?: number;
   @IsOptional() @IsString() memo?: string;
+}
+
+export class AddReminderDto {
+  @IsDateString() dueAt!: string;
+  @IsOptional() @IsString() note?: string;
+}
+
+export class UpdateReminderDto {
+  @IsEnum(ReminderStatus) status!: ReminderStatus;
 }
