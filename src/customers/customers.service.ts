@@ -32,6 +32,8 @@ function reliabilityOf(reminders: Reminder[]) {
   let label = 'New';
   if (total > 0) {
     if (rescheduled >= 3) label = 'Reschedules often';
+    // Only reschedules so far, nothing kept or missed yet: too early to judge.
+    else if (kept === 0 && bad === 0) label = rescheduled >= 2 ? 'Reschedules often' : 'New';
     else if (bad === 0 && rescheduled <= 1 && kept > 0) label = 'Reliable';
     else if (kept / total >= 0.6) label = 'Usually pays';
     else label = 'Risky';
