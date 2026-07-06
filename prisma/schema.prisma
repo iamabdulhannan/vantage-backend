@@ -139,7 +139,7 @@ model Expense {
   label     String
   amount    Decimal  @db.Decimal(14, 2)
   note      String?
-  color     String   @default("#4F46E5")
+  color     String   @default("#16A34A")
   date      DateTime @default(now())
   createdAt DateTime @default(now())
 

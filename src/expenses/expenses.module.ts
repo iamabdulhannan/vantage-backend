@@ -18,7 +18,7 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Principal } from '../common/principal';
 
-const EXPENSE_COLORS = ['#4F46E5', '#6366F1', '#818CF8', '#06B6D4', '#22D3EE', '#A5B4FC', '#67E8F9'];
+const EXPENSE_COLORS = ['#16A34A', '#0E7490', '#C2760A', '#15803D', '#0891B2', '#65A30D', '#B45309'];
 
 export class CreateExpenseDto {
   @IsString() @MinLength(2) label!: string;
