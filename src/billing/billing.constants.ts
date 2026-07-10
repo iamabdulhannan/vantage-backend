@@ -9,8 +9,17 @@ export interface PlanDef {
   features: string[];
 }
 
-// No free tier - the cheapest seat is $10/mo.
+export const TRIAL_DAYS = 7;
+
 export const PLANS: PlanDef[] = [
+  {
+    key: 'free',
+    name: 'Free',
+    blurb: `Try everything for ${TRIAL_DAYS} days`,
+    pricePerSeat: 0,
+    minSeats: 1,
+    features: ['Full khata, expenses & payroll', '1 seat only', 'Ads on shared statements'],
+  },
   {
     key: 'starter',
     name: 'Starter',
@@ -71,8 +80,10 @@ export function computeBilling(
   const monthlyPerSeat = plan.pricePerSeat;
   const annualPerSeat = Math.round(monthlyPerSeat * 12 * (1 - ANNUAL_DISCOUNT));
 
-  const monthlyTotal = Math.max(seats * monthlyPerSeat, BILLING_MIN);
-  const annualTotal = Math.max(seats * annualPerSeat, BILLING_MIN);
+  // The free trial owes nothing; paid plans never bill below the floor.
+  const isFree = plan.key === 'free';
+  const monthlyTotal = isFree ? 0 : Math.max(seats * monthlyPerSeat, BILLING_MIN);
+  const annualTotal = isFree ? 0 : Math.max(seats * annualPerSeat, BILLING_MIN);
 
   const dueNow = cycle === 'annual' ? annualTotal : monthlyTotal;
   const effectiveMonthly = cycle === 'annual' ? annualTotal / 12 : monthlyTotal;

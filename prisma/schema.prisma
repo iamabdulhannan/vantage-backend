@@ -12,6 +12,7 @@ datasource db {
 }
 
 enum Plan {
+  free
   starter
   growth
   scale
@@ -57,6 +58,7 @@ model Company {
   plan           Plan         @default(starter)
   billingCycle   BillingCycle @default(monthly)
   billingSince   DateTime     @default(now())
+  trialEndsAt    DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

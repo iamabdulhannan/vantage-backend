@@ -1,4 +1,4 @@
-import { Module, Body, Controller, Get, Patch, UseGuards, Injectable, NotFoundException } from '@nestjs/common';
+import { Module, Body, Controller, Get, Patch, UseGuards, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Plan, BillingCycle } from '@prisma/client';
 import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
@@ -32,15 +32,19 @@ export class BillingService {
   async update(companyId: string, dto: UpdateBillingDto) {
     const c = await this.prisma.company.findUnique({ where: { id: companyId } });
     if (!c) throw new NotFoundException('Company not found');
+    // The free tier is a signup trial, not a destination.
+    if (dto.plan === 'free' && c.plan !== 'free')
+      throw new BadRequestException('You cannot downgrade to the free trial. Contact support instead.');
 
     const plan = dto.plan ?? c.plan;
     const minSeats = planDef(plan).minSeats;
     const seats = Math.max(dto.seats ?? c.seats, minSeats);
     const billingCycle = dto.billingCycle ?? c.billingCycle;
 
+    const leavingTrial = c.plan === 'free' && plan !== 'free';
     const updated = await this.prisma.company.update({
       where: { id: companyId },
-      data: { plan, seats, billingCycle, billingSince: new Date() },
+      data: { plan, seats, billingCycle, billingSince: new Date() , ...(leavingTrial ? { trialEndsAt: null } : {}) },
     });
     return { company: updated, current: computeBilling(updated.plan, updated.seats, updated.billingCycle, updated.billingSince) };
   }

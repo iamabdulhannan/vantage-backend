@@ -23,8 +23,10 @@ export class AuthService {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email.trim().toLowerCase() } });
     if (existing) throw new ConflictException('An account with this email already exists');
 
-    const plan = dto.plan ?? 'starter';
-    const seats = Math.max(dto.seats ?? 1, planDef(plan).minSeats);
+    const plan = dto.plan ?? 'free';
+    // Free trial is single-seat by design; team members are a paid feature.
+    const seats = plan === 'free' ? 1 : Math.max(dto.seats ?? 1, planDef(plan).minSeats);
+    const trialEndsAt = plan === 'free' ? new Date(Date.now() + 7 * 24 * 3600 * 1000) : null;
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
     const company = await this.prisma.company.create({
@@ -39,6 +41,7 @@ export class AuthService {
         teamSize: dto.teamSize,
         seats,
         plan,
+        trialEndsAt,
         billingCycle: dto.billingCycle ?? 'monthly',
         users: {
           create: {
@@ -96,6 +99,7 @@ export class AuthService {
       plan: c.plan,
       billingCycle: c.billingCycle,
       billingSince: c.billingSince,
+      trialEndsAt: c.trialEndsAt ?? null,
     };
   }
 }

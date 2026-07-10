@@ -77,6 +77,8 @@ export class TeamService {
       this.prisma.user.findUnique({ where: { email: dto.email } }),
     ]);
     if (!company) throw new NotFoundException('Company not found');
+    if (company.plan === 'free')
+      throw new ForbiddenException('Team members are a paid feature. Upgrade your plan to invite your team.');
     if (existing) throw new ConflictException('An account with this email already exists');
     if (count >= company.seats) {
       throw new BadRequestException(
