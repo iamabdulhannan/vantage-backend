@@ -2,8 +2,9 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto, LoginDto } from './auth.dto';
+import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './auth.dto';
 import { planDef } from '../billing/billing.constants';
+import { sendEmail, resetCodeEmailHtml } from '../common/mailer';
 
 function initialsFrom(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -72,6 +73,54 @@ export class AuthService {
 
     const token = await this.sign({ id: user.id, companyId: user.companyId, email: user.email });
     return { token, user: this.publicUser(user), company: this.publicCompany(user.company) };
+  }
+
+  /**
+   * Start a reset: always resolves 200 (never reveal whether the email exists).
+   * A 6-digit code is stored hashed for 15 min and emailed when a mail
+   * provider is configured. Returns { delivered } so the app can hint if the
+   * email could not be sent yet.
+   */
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (user) {
+      // Invalidate any previous outstanding codes for this email.
+      await this.prisma.passwordReset.deleteMany({ where: { email, used: false } });
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const codeHash = await bcrypt.hash(code, 10);
+      await this.prisma.passwordReset.create({
+        data: { email, codeHash, expiresAt: new Date(Date.now() + 15 * 60 * 1000) },
+      });
+      const delivered = await sendEmail({
+        to: email,
+        subject: 'Your Vantage password reset code',
+        html: resetCodeEmailHtml(code),
+      });
+      return { ok: true, delivered };
+    }
+    // Unknown email: pretend success to prevent account enumeration.
+    return { ok: true, delivered: true };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const email = dto.email.trim().toLowerCase();
+    const record = await this.prisma.passwordReset.findFirst({
+      where: { email, used: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) throw new UnauthorizedException('This code has expired. Request a new one.');
+    const match = await bcrypt.compare(dto.code, record.codeHash);
+    if (!match) throw new UnauthorizedException('Incorrect code. Please check and try again.');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { email }, data: { passwordHash } }),
+      this.prisma.passwordReset.update({ where: { id: record.id }, data: { used: true } }),
+      // Burn any other outstanding codes too.
+      this.prisma.passwordReset.deleteMany({ where: { email, used: false } }),
+    ]);
+    return { ok: true };
   }
 
   async me(userId: string) {
